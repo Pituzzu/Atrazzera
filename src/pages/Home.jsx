@@ -90,7 +90,7 @@ function Home() {
       {/* Footer */}
       <footer className="bg-blue-700 py-4">
         <div className="container mx-auto text-center">
-          <h1 className="text-xl font-semibold">Piè di pagina</h1>
+          <h1 className="text-xl font-semibold">Piedini di pagina</h1>
         </div>
       </footer>
     </div>
