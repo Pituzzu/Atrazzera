@@ -1,5 +1,5 @@
-import Navbar from '../components/Navbar'
-import { Link } from 'react-router-dom'
+import Navbar from "../components/Navbar";
+import { Link } from "react-router-dom";
 
 function Home() {
   return (
@@ -74,17 +74,27 @@ function Home() {
       {/* Sezione Tutti gli Articoli - Categorie */}
       <section className="py-16 text-gray-900">
         <div className="max-w-6xl mx-auto px-4">
-        <h2 className="text-center text-3xl font-bold text-[#D9D9D9] mb-12 bg-[#2e3740] py-4 rounded-md">
+          <h2 className="text-center text-3xl font-bold text-[#D9D9D9] mb-12 bg-[#2e3740] py-4 rounded-md">
             Categorie
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6">
             {[
-              "Storia", "chiesa", "FesteIcon", "MestieriIcon",
-              "BiografieIcon", "PubblicazioniIcon", "ContadiniIcon",
-              "MinatoriIcon", "PartigianiIcon"
+              "Storia",
+              "chiesa",
+              "FesteIcon",
+              "MestieriIcon",
+              "BiografieIcon",
+              "PubblicazioniIcon",
+              "ContadiniIcon",
+              "MinatoriIcon",
+              "PartigianiIcon",
             ].map((cat, idx) => (
               <div key={idx} className=" text-center transition duration-300">
-                <img src={`/${cat}.svg`} alt={cat} className="w-30 h-30 mx-auto mb-3 object-contain" />
+                <img
+                  src={`/${cat}.svg`}
+                  alt={cat}
+                  className="w-30 h-30 mx-auto mb-3 object-contain"
+                />
               </div>
             ))}
           </div>
@@ -98,7 +108,7 @@ function Home() {
         </div>
       </footer>
     </div>
-  )
+  );
 }
 
-export default Home
+export default Home;

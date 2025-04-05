@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 
 function Post() {
   const fileInputRef = useRef(null);
@@ -10,18 +11,8 @@ function Post() {
   };
 
   return (
-    <div className="bg-[#424B54] text-white font-sans min-h-screen p-4">
-      {/* Header (senza navbar) */}
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Creazione Articolo</h1>
-      </div>
-      <Link
-        to="/"
-        className="fixed left-4 top-20 transform -translate-y-1/2 bg-[#2e3740] hover:bg-white/30 p-3 rounded shadow-lg flex items-center space-x-2 z-50"
-      >
-        <img src="/BackArrow.svg" alt="Indietro" className="w-6 h-6" />
-        <span className="text-sm font-medium">Indietro</span>
-      </Link>
+    <div className="bg-[#424B54] text-white font-sans min-h-screen pt-40 p-4">
+      <Navbar />
       <form className="max-w-3xl mx-auto space-y-8">
         {/* Sezione Titolo e Copertina */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md">
