@@ -162,7 +162,6 @@ function Post() {
                 type="text"
                 name="sottotitolo[]"
                 placeholder="Sottotitolo paragrafo"
-                required
                 className="w-full p-3 rounded-lg bg-[#C5BAAF] text-gray-900 mb-4"
               />
               <textarea
