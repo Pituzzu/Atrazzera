@@ -1,190 +1,207 @@
-import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { Bold, Italic, Underline } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-function Post() {
-  // Stato per gestire i paragrafi dinamici; per ogni paragrafo memorizziamo anche l'imageId (inizialmente 0)
+export default function Post() {
+  // Stato paragrafi dinamici
   const [paragraphs, setParagraphs] = useState([{ id: Date.now(), imageId: 0 }]);
-  // Stato per il toast
-  const [toastVisible, setToastVisible] = useState(false);
+  // Stato categorie caricate dal backend
+  const [categories, setCategories] = useState([]);
+  // Stato categorie selezionate
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  // Refs per ogni input file dei paragrafi
+  const paragraphFileInputRefs = useRef({});
   // Ref per l'input copertina
   const coverFileInputRef = useRef(null);
+  // Stato per la notifica toast
+  const [toastVisible, setToastVisible] = useState(false);
+
+  // Carica le categorie all'avvio
+  useEffect(() => {
+    fetch("https://atrazzera.altervista.org/backend/get_categories.php")
+      .then((res) => res.json())
+      .then((data) => setCategories(data))
+      .catch((err) => console.error("Errore fetch categorie:", err));
+  }, []);
 
   // Aggiunge un nuovo paragrafo
   const addParagraph = () => {
     setParagraphs((prev) => [...prev, { id: Date.now(), imageId: 0 }]);
   };
 
-  // Rimuove un paragrafo se ce ne sono più di uno
+  // Rimuove un paragrafo
   const removeParagraph = (id) => {
     setParagraphs((prev) => prev.filter((p) => p.id !== id));
+    delete paragraphFileInputRefs.current[id];
   };
 
-  // Attiva l'input file nascosto per il paragrafo specifico
-  const handleClickParagraphImage = (paragraphId) => {
-    document.getElementById(`paragraph-image-${paragraphId}`).click();
+  // Apre il file picker per un paragrafo
+  const handleClickParagraphImage = (id) => {
+    const input = paragraphFileInputRefs.current[id];
+    if (input) input.click();
   };
 
-  // Carica l'immagine del paragrafo tramite il suo input file
-  const handleParagraphImageChange = async (e, paragraphId) => {
+  // Gestisce il caricamento dell'immagine di un paragrafo
+  const handleParagraphImageChange = async (e, id) => {
     const file = e.target.files[0];
     if (!file) return;
-    const formData = new FormData();
-    formData.append("image", file);
+    const fd = new FormData();
+    fd.append("image", file);
     try {
-      const uploadRes = await fetch(
+      const res = await fetch(
         "https://atrazzera.altervista.org/backend/upload_image.php",
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: fd }
       );
-      const uploadResult = await uploadRes.json();
+      const { id: imgId } = await res.json();
       setParagraphs((prev) =>
-        prev.map((p) =>
-          p.id === paragraphId ? { ...p, imageId: uploadResult.id } : p
-        )
+        prev.map((p) => (p.id === id ? { ...p, imageId: imgId } : p))
       );
     } catch (err) {
-      console.error("Errore nel caricamento dell'immagine del paragrafo:", err);
+      console.error("Errore upload paragrafo:", err);
     }
   };
 
-  // Carica la copertina tramite un endpoint separato
-  const uploadCoverImage = async (coverFile) => {
-    const coverFormData = new FormData();
-    coverFormData.append("image", coverFile);
+  // Carica l'immagine di copertina
+  const uploadCoverImage = async (file) => {
+    const fd = new FormData();
+    fd.append("image", file);
     try {
-      const uploadRes = await fetch(
+      const res = await fetch(
         "https://atrazzera.altervista.org/backend/upload_image.php",
-        {
-          method: "POST",
-          body: coverFormData,
-        }
+        { method: "POST", body: fd }
       );
-      const uploadResult = await uploadRes.json();
-      return uploadResult.id;
-    } catch (err) {
-      console.error("Errore nel caricamento della copertina:", err);
+      const { id } = await res.json();
+      return id;
+    } catch {
       return 0;
     }
   };
 
-  // Gestione dell'invio del form al backend PHP
+  // Aggiunge o rimuove una categoria selezionata
+  const toggleCategory = (cat) => {
+    setSelectedCategories((prev) => {
+      const exists = prev.find((c) => c.id_categoria === cat.id_categoria);
+      if (exists) {
+        return prev.filter((c) => c.id_categoria !== cat.id_categoria);
+      } else {
+        return [...prev, cat];
+      }
+    });
+  };
+
+  // Gestione submit del form
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
-    const formData = new FormData(form);
+    const fd = new FormData(form);
 
-    // Caricamento della copertina, se presente
+    // Upload copertina
+    let coverId = 0;
     const coverInput = form.elements.namedItem("copertina");
-    let coverImageId = 0;
-    if (coverInput && coverInput.files && coverInput.files.length > 0) {
-      coverImageId = await uploadCoverImage(coverInput.files[0]);
+    if (coverInput?.files?.length) {
+      coverId = await uploadCoverImage(coverInput.files[0]);
     }
-    formData.append("coverImageId", coverImageId);
+    fd.append("coverImageId", coverId);
 
-    // Per ogni paragrafo, aggiunge il relativo imageId al FormData
+    // ID immagini paragrafi
     paragraphs.forEach((p) => {
-      formData.append("paragrafo_immagine[]", p.imageId);
+      fd.append("paragrafo_immagine[]", p.imageId);
+    });
+
+    // ID categorie selezionate
+    selectedCategories.forEach((cat) => {
+      fd.append("categorie[]", cat.id_categoria);
     });
 
     try {
-      const response = await fetch(
+      const res = await fetch(
         "https://atrazzera.altervista.org/backend/insert_article.php",
-        {
-          method: "POST",
-          body: formData,
-        }
+        { method: "POST", body: fd }
       );
-      const result = await response.text();
-      console.log("Risultato dal server:", result);
-      // Mostra il toast per 3 secondi
+      const text = await res.text();
+      console.log("Server:", text);
       setToastVisible(true);
       setTimeout(() => setToastVisible(false), 3000);
-    } catch (error) {
-      console.error("Errore durante l'invio:", error);
+    } catch (err) {
+      console.error("Errore invio form:", err);
     }
   };
 
   return (
     <div className="bg-[#424B54] text-white font-sans min-h-screen pt-40 p-4">
       <Navbar />
+
       <form
         onSubmit={handleSubmit}
         className="max-w-3xl mx-auto space-y-8"
         encType="multipart/form-data"
       >
-        {/* Sezione Titolo e Copertina */}
+        {/* Titolo & Copertina */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-          <div className="mb-4">
-            <input
-              type="text"
-              name="titolo"
-              placeholder="Titolo"
-              required
-              className="w-full p-3 rounded-lg bg-[#C5BAAF] text-gray-900"
-            />
-          </div>
-          <div>
-            <p className="mb-2">Carica immagine di copertina</p>
-            <input
-              type="file"
-              name="copertina"
-              ref={coverFileInputRef}
-              className="block w-full text-gray-900 file:py-2 file:px-4 file:border file:border-transparent file:rounded-lg file:bg-[#E1CE7A]"
-            />
-          </div>
+          <input
+            type="text"
+            name="titolo"
+            placeholder="Titolo"
+            required
+            className="w-full p-3 mb-4 rounded-lg bg-[#C5BAAF] text-gray-900"
+          />
+          <p className="mb-2">Carica immagine di copertina</p>
+          <input
+            type="file"
+            name="copertina"
+            ref={coverFileInputRef}
+            className="block w-full text-gray-900 file:rounded-lg file:bg-[#E1CE7A] file:px-4 file:py-2"
+          />
         </div>
 
-        {/* Sezione Paragrafi */}
-        {paragraphs.map((paragraph, index) => (
+        {/* Paragrafi */}
+        {paragraphs.map((p, idx) => (
           <div
-            key={paragraph.id}
+            key={p.id}
             className="bg-gray-800 p-6 rounded-lg shadow-md space-y-6"
           >
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Paragrafo {index + 1}</h2>
+              <h2 className="text-xl font-semibold">Paragrafo {idx + 1}</h2>
               {paragraphs.length > 1 && (
                 <button
                   type="button"
                   className="text-red-400 hover:text-red-600"
-                  onClick={() => removeParagraph(paragraph.id)}
+                  onClick={() => removeParagraph(p.id)}
                 >
                   Elimina paragrafo
                 </button>
               )}
             </div>
-            <div>
-              <input
-                type="text"
-                name="sottotitolo[]"
-                placeholder="Sottotitolo paragrafo"
-                className="w-full p-3 rounded-lg bg-[#C5BAAF] text-gray-900 mb-4"
-              />
-              <textarea
-                name="testo[]"
-                placeholder="Descrivere paragrafo"
-                required
-                className="w-full p-3 rounded-lg bg-[#C5BAAF] text-gray-900"
-                style={{ height: "100px" }}
-              ></textarea>
-            </div>
+
+            <input
+              type="text"
+              name="sottotitolo[]"
+              placeholder="Sottotitolo"
+              className="w-full p-3 mb-4 rounded-lg bg-[#C5BAAF] text-gray-900"
+            />
+
+            <textarea
+              name="testo[]"
+              placeholder="Testo"
+              required
+              className="w-full p-3 rounded-lg bg-[#C5BAAF] text-gray-900"
+              style={{ height: "100px" }}
+            />
+
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                onClick={() => handleClickParagraphImage(paragraph.id)}
-                className="bg-[#E1CE7A] text-black px-4 py-2 rounded-lg hover:bg-[#EBCFB2] transition"
+                className="bg-[#E1CE7A] px-4 py-2 rounded-lg text-black hover:bg-[#EBCFB2]"
+                onClick={() => handleClickParagraphImage(p.id)}
               >
                 Carica immagine
               </button>
               <input
                 type="file"
-                id={`paragraph-image-${paragraph.id}`}
-                onChange={(e) => handleParagraphImageChange(e, paragraph.id)}
                 className="hidden"
+                ref={(el) => (paragraphFileInputRefs.current[p.id] = el)}
+                onChange={(e) => handleParagraphImageChange(e, p.id)}
               />
               <div className="flex space-x-2 text-xl">
                 <ToggleGroup type="multiple">
@@ -202,77 +219,83 @@ function Post() {
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
-              {paragraph.imageId ? (
+              {p.imageId > 0 && (
                 <span className="text-green-300 text-sm">
-                  Immagine caricata (ID: {paragraph.imageId})
+                  Caricata (ID {p.imageId})
                 </span>
-              ) : null}
+              )}
             </div>
           </div>
         ))}
 
-        {/* Pulsante Aggiungi Paragrafo */}
         <div className="text-center">
           <button
             type="button"
             onClick={addParagraph}
-            className="bg-[#EBCFB2] text-black px-6 py-3 rounded-lg font-bold hover:bg-[#E1CE7A] transition"
+            className="bg-[#EBCFB2] px-6 py-3 rounded-lg text-black font-bold hover:bg-[#E1CE7A]"
           >
             + Paragrafo
           </button>
         </div>
 
-        {/* Sezione Ringraziamenti e Co-autori */}
+        {/* Ringraziamenti */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4">
             Ringraziamenti e co-autori
           </h2>
           <textarea
             name="ringraziamenti"
-            placeholder="Descrizione"
+            placeholder="Ringraziamenti"
             required
             className="w-full p-3 rounded-lg bg-[#C5BAAF] text-gray-900"
             style={{ height: "100px" }}
-          ></textarea>
+          />
         </div>
 
-        {/* Sezione Categorie */}
+        {/* Categorie multi-selezione */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Categorie articolo</h2>
-          <select
-            name="categoria"
-            required
-            className="w-full p-3 rounded-lg bg-[#C5BAAF] text-gray-900"
-          >
-            <option value="">Seleziona una categoria</option>
-            <option value="1">Pippo</option>
-            <option value="2">Pippo</option>
-            <option value="3">Pippo</option>
-            <option value="4">Pippo</option>
-            <option value="5">Pippo</option>
-            <option value="6">Pippo</option>
-          </select>
+          <h2 className="text-xl font-semibold mb-4">
+            Seleziona categorie
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => {
+              const selected = selectedCategories.some(
+                (c) => c.id_categoria === cat.id_categoria
+              );
+              return (
+                <button
+                  key={cat.id_categoria}
+                  type="button"
+                  onClick={() => toggleCategory(cat)}
+                  className={`px-3 py-1 rounded-full border ${
+                    selected
+                      ? "bg-[#E1CE7A] text-black border-transparent"
+                      : "bg-transparent text-white border-gray-400"
+                  } transition`}
+                >
+                  {cat.nome_categoria}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Pulsante di submit "PUBBLICA" */}
         <div className="text-center">
           <button
             type="submit"
-            className="bg-[#EBCFB2] text-black px-8 py-4 rounded-lg font-bold hover:bg-[#E1CE7A] transition"
+            className="bg-[#EBCFB2] px-8 py-4 rounded-lg text-black font-bold hover:bg-[#E1CE7A]"
           >
             PUBBLICA
           </button>
         </div>
       </form>
 
-      {/* Toast Notification */}
+      {/* Toast */}
       {toastVisible && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg">
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 px-4 py-2 rounded-md text-white shadow-lg">
           Post creato
         </div>
       )}
     </div>
   );
 }
-
-export default Post;
