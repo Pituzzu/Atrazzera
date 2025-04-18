@@ -2,22 +2,42 @@ import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { Link } from "react-router-dom";
 
-function Home() {
+export default function Home() {
   const [articles, setArticles] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  // Mappa nomi di categoria → nome del file SVG
+  const iconMap = {
+    "Storia": "Storia",
+    "Chiese e Monumenti": "chiesa",
+    "Feste e Tradizioni": "FesteIcon",
+    "Arti e Mestieri": "MestieriIcon",
+    "Biografie": "BiografieIcon",
+    "Pubblicazioni": "PubblicazioniIcon",
+    "Contadini": "ContadiniIcon",
+    "Civiltà Minerarie": "MinatoriIcon",
+    "Partigiani": "PartigianiIcon"
+  };
 
   useEffect(() => {
+    // Fetch articoli
     fetch("https://atrazzera.altervista.org/backend/get_recent_articles.php")
-      .then((response) => response.json())
+      .then((res) => res.json())
       .then((data) => setArticles(data))
-      .catch((error) =>
-        console.error("Errore nel recuperare gli articoli:", error)
-      );
+      .catch((err) => console.error("Errore articoli:", err));
+
+    // Fetch categorie
+    fetch("https://atrazzera.altervista.org/backend/get_categories.php")
+      .then((res) => res.json())
+      .then((data) => setCategories(data))
+      .catch((err) => console.error("Errore categorie:", err));
   }, []);
 
   return (
     <div className="bg-[#424B54] text-white font-sans">
       <Navbar />
 
+      {/* Hero */}
       <div className="pt-20 relative">
         <img
           src="/sfondo.svg"
@@ -26,6 +46,7 @@ function Home() {
         />
       </div>
 
+      {/* Ultimi Articoli */}
       <section className="py-16 px-4 md:px-8">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-center text-3xl font-bold text-[#D9D9D9] mb-12 bg-[#2e3740] py-4 rounded-md">
@@ -34,12 +55,9 @@ function Home() {
 
           {articles.length > 0 ? (
             articles.map((article, idx) => {
-              // Prendo solo il testo del primo paragrafo, se esiste
-              const primoParagrafo = article.paragraphs?.[0]?.testo || "";
+              const testo = article.paragraphs?.[0]?.testo || "";
               const preview =
-                primoParagrafo.length > 100
-                  ? primoParagrafo.substring(0, 100) + "..."
-                  : primoParagrafo;
+                testo.length > 100 ? testo.slice(0, 100) + "..." : testo;
 
               return (
                 <div
@@ -79,38 +97,41 @@ function Home() {
         </div>
       </section>
 
+      {/* Categorie */}
       <section className="py-16 text-gray-900">
         <div className="max-w-6xl mx-auto px-4">
           <h2 className="text-center text-3xl font-bold text-[#D9D9D9] mb-12 bg-[#2e3740] py-4 rounded-md">
             Categorie
           </h2>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-6">
-            {[
-              "Storia",
-              "chiesa",
-              "FesteIcon",
-              "MestieriIcon",
-              "BiografieIcon",
-              "PubblicazioniIcon",
-              "ContadiniIcon",
-              "MinatoriIcon",
-              "PartigianiIcon",
-            ].map((cat, idx) => {
-              const displayTitle = cat.replace("Icon", "");
+            {categories.map((cat) => {
+              const iconName = iconMap[cat.nome_categoria] || "sfondo";
               return (
-                <div key={idx} className="text-center transition duration-300">
+                <Link
+                  key={cat.id_categoria}
+                  to={`/categoria?id=${cat.id_categoria}`}
+                  className="text-center transition duration-300"
+                >
                   <img
-                    src={`/${cat}.svg`}
-                    alt={cat}
+                    src={`/${iconName}.svg`}
+                    alt={cat.nome_categoria}
                     className="w-30 h-30 mx-auto mb-3 object-contain"
                   />
-                </div>
+                  
+                </Link>
               );
             })}
+            {categories.length === 0 && (
+              <p className="col-span-full text-center text-gray-500">
+                Caricamento categorie…
+              </p>
+            )}
           </div>
         </div>
       </section>
 
+      {/* Footer */}
       <footer className="bg-[#2e3740] py-6 mt-12">
         <div className="text-center text-white text-sm font-light">
           <p>© 2025 aTrazzera. Matteo il Pipo &amp; Tano l'Ano Production.</p>
@@ -119,5 +140,3 @@ function Home() {
     </div>
   );
 }
-
-export default Home;

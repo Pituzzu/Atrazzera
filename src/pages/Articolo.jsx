@@ -50,18 +50,25 @@ export default function Articolo() {
       <Navbar />
 
       {/* Copertina */}
-      <div className="relative mt-20 bg-black">
-        <img
-          src={article.copertina || "/sfondo.svg"}
-          alt={article.titolo}
-          className="w-full h-[300px] object-cover opacity-60"
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
-            {article.titolo}
-          </h1>
-        </div>
-      </div>
+      <div className="relative mt-20">
+  {article.copertina ? (
+    <img
+      src={article.copertina}
+      alt={article.titolo}
+      className="w-full h-[300px] object-cover opacity-60"
+    />
+  ) : (
+    // Se non c’è copertina, creiamo comunque uno spazio alto 300px
+    <div className="w-full h-[300px] " />
+  )}
+
+  <div className="absolute inset-0 flex items-center justify-center">
+    <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+      {article.titolo}
+    </h1>
+  </div>
+</div>
+
 
       {/* Paragrafi */}
       <div className="px-8 md:px-80 py-8 space-y-12">
